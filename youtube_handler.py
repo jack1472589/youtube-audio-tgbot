@@ -1,5 +1,6 @@
 import os
 import subprocess
+import time
 from pathlib import Path
 from config import DOWNLOAD_DIR, MAX_FILE_SIZE
 
@@ -24,6 +25,15 @@ class YouTubeHandler:
                 "--audio-format", "mp3",
                 "--audio-quality", "192",
                 "-o", output_template,
+                # 添加以下选项以解决 YouTube 限制
+                "--socket-timeout", "30",
+                "--hls-prefer-ffmpeg",
+                "--no-part",
+                # 添加延迟以避免速率限制 (字节/秒)
+                "--ratelimit", "100000",
+                # 重试设置
+                "--retries", "3",
+                "--fragment-retries", "3",
                 url
             ]
             
@@ -35,7 +45,16 @@ class YouTubeHandler:
             )
             
             if result.returncode != 0:
-                raise Exception(f"下载失败: {result.stderr}")
+                error_msg = result.stderr
+                # 检查常见的 YouTube 错误
+                if "429" in error_msg:
+                    raise Exception("❌ 错误: YouTube 请求过多，请稍后再试")
+                elif "Sign in to confirm" in error_msg:
+                    raise Exception("❌ 错误: YouTube 需要验证，请稍后再试")
+                elif "No supported JavaScript runtime" in error_msg:
+                    raise Exception("❌ 错误: 需要安装 JavaScript 运行时。请运行: pip install deno")
+                else:
+                    raise Exception(f"下载失败: {error_msg}")
             
             # 查找下载的文件
             mp3_files = list(Path(self.download_dir).glob("*.mp3"))
@@ -52,7 +71,7 @@ class YouTubeHandler:
             return str(file_path)
             
         except subprocess.TimeoutExpired:
-            raise Exception("下载超时")
+            raise Exception("下载超时 - 视频过长或网络不稳定")
         except Exception as e:
             raise Exception(f"错误: {str(e)}")
     
