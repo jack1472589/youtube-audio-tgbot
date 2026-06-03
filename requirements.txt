@@ -1,9 +1,4 @@
 python-telegram-bot==20.3
-yt-dlp
+yt-dlp>=2024.10.0
 python-dotenv==1.0.0
 requests==2.31.0
-# 安装 deno
-curl -fsSL https://deno.land/install.sh | sh
-
-# 升级 yt-dlp 到最新版本
-pip install --upgrade yt-dlp
